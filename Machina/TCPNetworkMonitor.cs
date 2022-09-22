@@ -16,7 +16,6 @@
 using System;
 using System.Diagnostics;
 using System.Threading;
-using System.Threading.Tasks;
 using Machina.Infrastructure;
 using Machina.Sockets;
 
@@ -74,7 +73,7 @@ namespace Machina
         #endregion
 
         private readonly ConnectionManager _connectionManager = new ConnectionManager();
-        private Task _monitorTask;
+        private Thread _processThread;
         private CancellationTokenSource _tokenSource;
 
         private bool _disposedValue;
@@ -85,13 +84,17 @@ namespace Machina
         /// </summary>
         public void Start()
         {
+            
             if (Config.ProcessID == 0 && string.IsNullOrWhiteSpace(Config.WindowName) && string.IsNullOrWhiteSpace(Config.WindowClass))
                 throw new ArgumentException("TCPNetworkMonitor: Please specify one of Config.ProcessID, Config.ProcessIDList, Config.WindowName or Config.WindowClass.");
             if (DataReceivedEventHandler == null && DataSentEventHandler == null)
                 throw new ArgumentException("TCPNetworkMonitor: Please set DataReceivedEventHandler and/or DataSentEventHandler.");
 
             _tokenSource = new CancellationTokenSource();
-            _monitorTask = Task.Run(() => ProcessDataLoop(_tokenSource.Token));
+            _processThread = new Thread(new ThreadStart(() => ProcessDataLoop(_tokenSource)));
+            _processThread.IsBackground = true;
+            _processThread.Start();
+           
         }
 
         /// <summary>
@@ -101,13 +104,13 @@ namespace Machina
         {
             _tokenSource?.Cancel();
 
-            if (_monitorTask != null)
+            if (_processThread != null)
             {
-                if (!_monitorTask.Wait(100) || _monitorTask.Status == TaskStatus.Running)
-                    Trace.Write("TCPNetworkMonitor: Task cannot be stopped.", "DEBUG-MACHINA");
-                else
-                    _monitorTask.Dispose();
-                _monitorTask = null;
+                if (!_processThread.Join(100) || _processThread.ThreadState == System.Threading.ThreadState.Running) { 
+                    Trace.Write("TCPNetworkMonitor: Thread cannot be stopped, forced stopping...", "DEBUG-MACHINA");
+                    _processThread.Abort("Forced stop monitor from stop method");
+                } 
+                _processThread = null;
             }
 
             _tokenSource?.Dispose();
@@ -116,11 +119,11 @@ namespace Machina
             _connectionManager.Cleanup();
         }
 
-        private void ProcessDataLoop(CancellationToken token)
+        private void ProcessDataLoop(CancellationTokenSource tokenSource)
         {
             try
             {
-                while (!token.IsCancellationRequested)
+                while (!tokenSource.IsCancellationRequested)
                 {
                     try
                     {
@@ -129,23 +132,22 @@ namespace Machina
                         ProcessNetworkData();
 
                     }
-                    catch (OperationCanceledException)
-                    {
-
-                    }
                     catch (Exception ex)
                     {
                         if (DateTime.UtcNow.Subtract(_lastLoopError).TotalSeconds > 5)
                             Trace.WriteLine("TCPNetworkMonitor Error in ProcessDataLoop inner code: " + ex.ToString(), "DEBUG-MACHINA");
                         _lastLoopError = DateTime.UtcNow;
                     }
-
-                    Task.Delay(30, token).Wait(token);
+                    Thread.Sleep(30);
                 }
             }
             catch (OperationCanceledException)
             {
 
+            }
+            catch (ThreadAbortException ex)
+            {
+                Trace.WriteLine("ProcessDataLoop thread was forced stopped: " + ex.ToString(), "DEBUG-MACHINA");
             }
             catch (Exception ex)
             {
@@ -192,7 +194,10 @@ namespace Machina
             {
                 if (disposing)
                 {
-                    _monitorTask?.Dispose();
+                    if (_tokenSource != null && !_tokenSource.IsCancellationRequested)
+                    {
+                        Stop();
+                    }
                     _tokenSource?.Dispose();
                     _connectionManager.Dispose();
                 }

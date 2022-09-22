@@ -1,0 +1,26 @@
+stages:
+  - build
+  - postbuild
+
+variables:
+  VS_INSTALL_PATH: 'C:\Program Files\Microsoft Visual Studio\2022\Enterprise'
+
+build:
+  stage: build
+  tags:
+    - win2022
+  script:
+    - Import-Module "$env:VS_INSTALL_PATH\Common7\Tools\Microsoft.VisualStudio.DevShell.dll"
+    - Enter-VsDevShell -VsInstallPath $env:VS_INSTALL_PATH -SkipAutomaticLocation -DevCmdArguments "-arch=x64"
+    - Invoke-WebRequest "https://dist.nuget.org/win-x86-commandline/latest/nuget.exe" -OutFile "nuget.exe"
+    - '& ./nuget.exe restore'
+    - '& MSBuild.exe Machina.sln /target:Machina_FFXIV /p:Configuration=Release /p:Platform="Any CPU"'
+  artifacts:
+    paths:
+      - 'Machina.FFXIV/bin/Release/*'
+    exclude:
+      - '*.xml'
+
+build_plugin:
+  stage: postbuild
+  trigger: wakingsands/FFXIV_Plugin_Patcher

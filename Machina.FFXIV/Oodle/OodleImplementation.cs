@@ -13,31 +13,11 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see<http://www.gnu.org/licenses/>.
 
-using Machina.FFXIV.Headers.Opcodes;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
-
-namespace Machina.FFXIV.Tests.Headers.Opcodes
+namespace Machina.FFXIV.Oodle
 {
-    [TestClass()]
-    public class OpcodeManagerTests
+    public enum OodleImplementation
     {
-        [TestMethod()]
-        public void OpcodeManagerTest()
-        {
-            OpcodeManager sut = new();
-
-            Assert.IsNotNull(sut);
-        }
-
-        [TestMethod()]
-        public void SetRegionTest()
-        {
-            OpcodeManager sut = new();
-
-            sut.SetRegion(GameRegion.Korean);
-
-            Assert.AreEqual(GameRegion.Korean, sut.GameRegion);
-            Assert.IsTrue(sut.CurrentOpcodes["ActorControl"] > 0);
-        }
+        Ffxiv = 1,
+        Library = 2
     }
 }

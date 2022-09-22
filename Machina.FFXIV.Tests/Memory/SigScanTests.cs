@@ -13,31 +13,30 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see<http://www.gnu.org/licenses/>.
 
-using Machina.FFXIV.Headers.Opcodes;
+using System;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using System.Linq;
+using System.Runtime.InteropServices;
+using Machina.FFXIV.Memory;
 
-namespace Machina.FFXIV.Tests.Headers.Opcodes
+namespace Machina.FFXIV.Tests.Memory
 {
     [TestClass()]
-    public class OpcodeManagerTests
+    public class SigScanTests
     {
-        [TestMethod()]
-        public void OpcodeManagerTest()
-        {
-            OpcodeManager sut = new();
-
-            Assert.IsNotNull(sut);
-        }
+        [DllImport("kernel32", SetLastError = true, CharSet = CharSet.Ansi)]
+        private static extern IntPtr LoadLibraryW([MarshalAs(UnmanagedType.LPWStr)] string lpFileName);
 
         [TestMethod()]
-        public void SetRegionTest()
+        public void ReadTest()
         {
-            OpcodeManager sut = new();
+            IntPtr _libraryHandle = LoadLibraryW(@"C:\Program Files (x86)\FINAL FANTASY XIV - A Realm Reborn\game\ffxiv_dx11.exe");
 
-            sut.SetRegion(GameRegion.Korean);
+            SigScan sut = new();
 
-            Assert.AreEqual(GameRegion.Korean, sut.GameRegion);
-            Assert.IsTrue(sut.CurrentOpcodes["ActorControl"] > 0);
+            System.Collections.Generic.Dictionary<SignatureType, int> result = sut.Read(_libraryHandle);
+
+            Assert.IsTrue(result.Any());
         }
     }
 }

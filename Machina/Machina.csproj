@@ -6,11 +6,11 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
   <PropertyGroup>
-    <Version>2.3.0.7</Version>
+    <Version>2.3.1.1</Version>
     <Authors>Ravahn</Authors>
     <PackageId>Machina</PackageId>
-    <AssemblyVersion>2.3.0.7</AssemblyVersion>
-    <FileVersion>2.3.0.7</FileVersion>
+    <AssemblyVersion>2.3.1.1</AssemblyVersion>
+    <FileVersion>2.3.1.1</FileVersion>
     <NeutralLanguage>en</NeutralLanguage>
     <Description>General-purpose library for raw network packet reading and reassembly</Description>
     <Copyright>Copyright © 2022 Ravahn</Copyright>
@@ -22,7 +22,7 @@
     <PackageLicenseFile>LICENSE.md</PackageLicenseFile>
     <RepositoryUrl>https://github.com/ravahn/machina</RepositoryUrl>
     <PackageTags>raw socket winpcap tcpip c# packet sniffer</PackageTags>
-    <SignAssembly>true</SignAssembly>
+    <SignAssembly>false</SignAssembly>
     <AssemblyOriginatorKeyFile>Ravahn.Machina.Keyfile.snk</AssemblyOriginatorKeyFile>
     <DelaySign>false</DelaySign>
   </PropertyGroup>
