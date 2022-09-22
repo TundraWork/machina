@@ -13,6 +13,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see<http://www.gnu.org/licenses/>.
 
+using System;
 using System.Diagnostics;
 using System.IO;
 
@@ -30,39 +31,56 @@ namespace Machina.FFXIV.Oodle
         {
             lock (_lock)
             {
-                if (_internalLibraryAvailable && !_internalLibraryInitialized)
+                // Modified logic start - find dll first, then original logic
+                try
                 {
-                    if (!(_oodleNative is OodleNative_Library))
-                        _oodleNative?.UnInitialize();
-                    _oodleNative = new OodleNative_Library();
-                    string pathLibrary = Path.Combine(System.IO.Path.GetDirectoryName(new System.Uri(System.Reflection.Assembly.GetEntryAssembly().CodeBase).LocalPath), "Plugins", "FFXIV_ACT_Plugin", _internallibraryName);
-                    if (File.Exists(pathLibrary))
+                    if (_internalLibraryAvailable && !_internalLibraryInitialized)
                     {
-                        Trace.WriteLine($"{nameof(OodleNative_Library)}: Found oddle dll at {pathLibrary}, loading...", "DEBUG-MACHINA");
-                        _oodleNative.Initialize(pathLibrary);
-                        if (!_oodleNative.IsInitialized)
+                        // Uninit and re-init
+                        if (!(_oodleNative is OodleNative_Library))
+                            _oodleNative?.UnInitialize();
+                        _oodleNative = new OodleNative_Library();
+                        // Find and load oddle dll
+                        string pathLibrary = Path.Combine(Path.GetDirectoryName(new Uri(System.Reflection.Assembly.GetEntryAssembly().CodeBase).LocalPath), "Plugins", "FFXIV_ACT_Plugin", _internallibraryName);
+                        if (File.Exists(pathLibrary))
                         {
-                            Trace.WriteLine($"{nameof(OodleNative_Library)}: Oddle dll load failed, fallback to game executable...", "DEBUG-MACHINA");
-                            _internalLibraryAvailable = false;
+                            Trace.WriteLine($"{nameof(OodleNative_Library)}: Found oddle dll at {pathLibrary}, loading...", "DEBUG-MACHINA");
+                            _oodleNative.Initialize(pathLibrary);
+                            if (!_oodleNative.IsInitialized)
+                            {
+                                Trace.WriteLine($"{nameof(OodleNative_Library)}: Oddle dll load failed, fallback to game executable...", "DEBUG-MACHINA");
+                                _internalLibraryAvailable = false;
+                            }
+                            else
+                            {
+                                _internalLibraryInitialized = true;
+                                return;
+                            }
                         }
                         else
                         {
-                            _internalLibraryInitialized = true;
-                            return;
+                            Trace.WriteLine($"{nameof(OodleNative_Library)}: Could not found oddle dll at {pathLibrary}, fallback to game executable...", "DEBUG-MACHINA");
+                            _internalLibraryAvailable = false;
                         }
+
                     }
-                    else
+                    // Skipping loads if we have loaded it correctly 
+                    else if (_internalLibraryInitialized)
                     {
-                        Trace.WriteLine($"{nameof(OodleNative_Library)}: Could not found oddle dll at {pathLibrary}, fallback to game executable...", "DEBUG-MACHINA");
-                        _internalLibraryAvailable = false;
+                        return;
                     }
 
                 }
-                else if (_internalLibraryInitialized)
+                //It may throw exception so we catch it there
+                catch (Exception e)
                 {
-                    return;
+                    _internalLibraryInitialized = false;
+                    _internalLibraryAvailable = false;
+                    Trace.WriteLine($"{nameof(OodleNative_Library)}: An error occurred when trying to found oddle dll, fallback to game executable... ({e.Message})", "DEBUG-MACHINA");
                 }
-
+                // Modified logic end 
+                
+                // Original logic start
                 // Note: Do not re-initialize if not changing implementation type.
                 if (implementation == OodleImplementation.Library)
                 {
@@ -81,6 +99,7 @@ namespace Machina.FFXIV.Oodle
                     _oodleNative = new OodleNative_Ffxiv();
                 }
                 _oodleNative.Initialize(path);
+                // Original logic end
             }
         }
 
